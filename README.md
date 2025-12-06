@@ -9,6 +9,16 @@ TrustView is a lightweight certificate and website status dashboard. Point it at
 
 The app is built with Flask and stores configuration in a simple `websites.yml`, making it easy to deploy inside an ops network or bundle with existing tooling.
 
+<p align="center">
+  <img src="images/darkmode-status.jpg" width="45%" alt="Dark mode">
+  <img src="images/lightmode-status.jpg" width="45%" alt="Light mode">
+</p>
+
+<p align="center">
+  <img src="images/darkmode-status-card.jpg" width="45%" alt="Dark mode">
+  <img src="images/lightmode-admin.jpg" width="45%" alt="Light mode">
+</p>
+
 ## Features
 
 - **Dashboard & cards** – clean UI with search, card/grid toggle, and live timestamp.
