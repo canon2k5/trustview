@@ -1,0 +1,441 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel - TrustView{% endblock %}
+{% block header %}🛡️ Admin Panel{% endblock %}
+
+{% block toggles %}
+<!-- No toggles needed for admin panel -->
+{% endblock %}
+
+{% block controls %}
+  <div class="controls-grid">
+    <div class="admin-nav">
+      <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i>
+        Back to Dashboard
+      </a>
+    </div>
+    <div class="theme-toggle" id="theme-toggle-btn">
+      <i class="fas fa-moon"></i>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  {% if message %}
+    <div class="alert alert-success">
+      <i class="fas fa-check-circle"></i>
+      {{ message }}
+    </div>
+  {% endif %}
+
+  <div class="admin-container">
+    <!-- Add New Website Section -->
+    <div class="admin-section">
+      <div class="section-header">
+        <h2>
+          <i class="fas fa-plus-circle"></i>
+          Add New Website
+        </h2>
+        <p>Monitor a new website by adding its details below</p>
+      </div>
+      
+      <form method="POST" class="add-form">
+        <input type="hidden" name="action" value="add">
+        <div class="form-group">
+          <label for="name">
+            <i class="fas fa-tag"></i>
+            Website Name
+          </label>
+          <input type="text" id="name" name="name" placeholder="My Website" required>
+        </div>
+        <div class="form-group">
+          <label for="url">
+            <i class="fas fa-link"></i>
+            Website URL
+          </label>
+          <input type="url" id="url" name="url" placeholder="https://example.com" required>
+        </div>
+        <button class="btn btn-primary" type="submit">
+          <i class="fas fa-plus"></i>
+          Add Website
+        </button>
+      </form>
+    </div>
+
+    <!-- Current Websites Section -->
+    <div class="admin-section">
+      <div class="section-header">
+        <h2>
+          <i class="fas fa-list"></i>
+          Current Websites
+          <span class="count-badge">{{ current|length }}</span>
+        </h2>
+        <p>Manage your monitored websites</p>
+      </div>
+
+      {% if current %}
+        <div class="websites-list">
+          {% for site in current %}
+            <div class="website-item">
+              <div class="website-info">
+                <div class="website-name">
+                  <i class="fas fa-globe"></i>
+                  {{ site.name }}
+                </div>
+                <div class="website-url">
+                  <i class="fas fa-link"></i>
+                  {{ site.url }}
+                </div>
+              </div>
+              
+              <div class="website-actions">
+                <button class="btn btn-edit" onclick="editWebsite({{ loop.index0 }})">
+                  <i class="fas fa-edit"></i>
+                  Edit
+                </button>
+                <button class="btn btn-delete" onclick="deleteWebsite({{ loop.index0 }}, '{{ site.name }}')">
+                  <i class="fas fa-trash"></i>
+                  Delete
+                </button>
+              </div>
+
+              <!-- Hidden Edit Form -->
+              <form method="POST" class="edit-form" id="edit-form-{{ loop.index0 }}" style="display: none;">
+                <input type="hidden" name="action" value="edit">
+                <input type="hidden" name="index" value="{{ loop.index0 }}">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Website Name</label>
+                    <input type="text" name="name" value="{{ site.name }}" required>
+                  </div>
+                  <div class="form-group">
+                    <label>Website URL</label>
+                    <input type="url" name="url" value="{{ site.url }}" required>
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button class="btn btn-success" type="submit">
+                    <i class="fas fa-save"></i>
+                    Save Changes
+                  </button>
+                  <button class="btn btn-secondary" type="button" onclick="cancelEdit({{ loop.index0 }})">
+                    <i class="fas fa-times"></i>
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <i class="fas fa-inbox"></i>
+          <h3>No websites yet</h3>
+          <p>Add your first website above to start monitoring</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Hidden Delete Form -->
+  <form method="POST" id="delete-form" style="display: none;">
+    <input type="hidden" name="action" value="delete">
+    <input type="hidden" name="index" id="delete-index">
+  </form>
+
+  <style>
+    .admin-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 2rem;
+      display: grid;
+      gap: 2rem;
+    }
+
+    .admin-section {
+      background: var(--bg-primary);
+      border-radius: 1rem;
+      padding: 2rem;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border-color);
+    }
+
+    .section-header {
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid var(--border-color);
+    }
+
+    .section-header h2 {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .section-header p {
+      color: var(--text-secondary);
+      margin: 0;
+    }
+
+    .count-badge {
+      background: var(--primary-color);
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 1rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
+    .alert {
+      background: var(--success-bg);
+      color: var(--success-text);
+      border: 1px solid var(--success-color);
+      border-radius: 0.75rem;
+      padding: 1rem 1.5rem;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-weight: 600;
+      max-width: 1200px;
+      margin-left: auto;
+      margin-right: auto;
+      margin-bottom: 2rem;
+    }
+
+    .add-form {
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .form-group label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+    }
+
+    .form-group input {
+      padding: 0.875rem 1rem;
+      border: 2px solid var(--border-color);
+      border-radius: 0.75rem;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgb(37 99 235 / 0.1);
+    }
+
+    .websites-list {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .website-item {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      transition: all 0.3s ease;
+    }
+
+    .website-item:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-1px);
+    }
+
+    .website-item > div:first-child {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .website-info {
+      flex: 1;
+    }
+
+    .website-name {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 1.1rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .website-url {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    .website-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn-edit {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .btn-edit:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-delete {
+      background: var(--error-color);
+      color: white;
+    }
+
+    .btn-delete:hover {
+      background: #dc2626;
+    }
+
+    .btn-primary {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-success {
+      background: var(--success-color);
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #059669;
+    }
+
+    .edit-form {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-secondary);
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      color: var(--text-muted);
+    }
+
+    .empty-state h3 {
+      margin-bottom: 0.5rem;
+      color: var(--text-primary);
+    }
+
+    @media (max-width: 768px) {
+      .admin-container {
+        padding: 0 1rem;
+      }
+
+      .admin-section {
+        padding: 1.5rem;
+      }
+
+      .website-item > div:first-child {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+      }
+
+      .website-actions {
+        align-self: stretch;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .form-actions {
+        flex-direction: column;
+      }
+    }
+  </style>
+
+  <script>
+    function editWebsite(index) {
+      const editForm = document.getElementById(`edit-form-${index}`);
+      const websiteItem = editForm.parentElement;
+      const websiteInfo = websiteItem.querySelector('.website-info').parentElement;
+      
+      websiteInfo.style.display = 'none';
+      editForm.style.display = 'block';
+    }
+
+    function cancelEdit(index) {
+      const editForm = document.getElementById(`edit-form-${index}`);
+      const websiteItem = editForm.parentElement;
+      const websiteInfo = websiteItem.querySelector('.website-info').parentElement;
+      
+      editForm.style.display = 'none';
+      websiteInfo.style.display = 'flex';
+    }
+
+    function deleteWebsite(index, name) {
+      if (confirm(`Are you sure you want to delete "${name}"?`)) {
+        document.getElementById('delete-index').value = index;
+        document.getElementById('delete-form').submit();
+      }
+    }
+
+    // Form validation and UX improvements
+    document.addEventListener('DOMContentLoaded', function() {
+      const addForm = document.querySelector('.add-form');
+      const inputs = addForm.querySelectorAll('input[required]');
+      
+      inputs.forEach(input => {
+        input.addEventListener('blur', function() {
+          if (this.value.trim() === '') {
+            this.style.borderColor = 'var(--error-color)';
+          } else {
+            this.style.borderColor = 'var(--border-color)';
+          }
+        });
+      });
+    });
+  </script>
+{% endblock %}

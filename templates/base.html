@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}TrustView Dashboard{% endblock %}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>{% block header %}TrustView Dashboard{% endblock %}</h1>
+            <h2>Certificate & Website Status Monitoring</h2>
+            <div class="timestamp">
+                {% block timestamp %}{% endblock %}
+            </div>
+        </div>
+    </div>
+
+    {% block toggles %}
+    <div class="toggles">
+        <label>
+            <input type="checkbox" id="card-view-toggle"> Card View
+        </label>
+    </div>
+    {% endblock %}
+
+    <div class="controls">
+        {% block controls %}{% endblock %}
+    </div>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <div class="footer">
+        <p>TrustView Dashboard - Monitoring your digital infrastructure with confidence</p>
+        <p>&copy; {{ current_year }} canon2k5 — MIT License</p>
+    </div>
+
+    <script>
+        // Theme Toggle Functionality
+        const cardViewToggle = document.getElementById('card-view-toggle');
+        const themeToggleBtn = document.getElementById('theme-toggle-btn');
+        const body = document.body;
+
+        // Load saved preferences
+        const savedDarkMode = localStorage.getItem('darkMode') === 'true';
+        const savedCardViewPref = localStorage.getItem('cardView');
+        const legacyCompactPref = localStorage.getItem('compactMode');
+        const prefersCardView = savedCardViewPref !== null
+            ? savedCardViewPref === 'true'
+            : legacyCompactPref === 'true';
+
+        // Apply saved preferences
+        if (savedDarkMode) {
+            body.classList.add('dark-mode');
+        }
+        body.classList.remove('compact');
+        if (prefersCardView) {
+            body.classList.add('card-view');
+            if (cardViewToggle) cardViewToggle.checked = true;
+        }
+
+        // Update theme toggle button icon
+        function updateThemeIcon() {
+            if (themeToggleBtn) {
+                const icon = themeToggleBtn.querySelector('i');
+                if (body.classList.contains('dark-mode')) {
+                    icon.className = 'fas fa-sun';
+                } else {
+                    icon.className = 'fas fa-moon';
+                }
+            }
+        }
+        updateThemeIcon();
+
+        // Theme toggle button
+        if (themeToggleBtn) {
+            themeToggleBtn.addEventListener('click', function() {
+                const isDark = body.classList.contains('dark-mode');
+                body.classList.toggle('dark-mode', !isDark);
+                localStorage.setItem('darkMode', !isDark);
+                updateThemeIcon();
+            });
+        }
+
+        // Compact mode toggle
+        if (cardViewToggle) {
+            cardViewToggle.addEventListener('change', function() {
+                body.classList.remove('compact');
+                body.classList.toggle('card-view', this.checked);
+                localStorage.setItem('cardView', this.checked);
+            });
+        }
+
+        // Search functionality (only on dashboard)
+        const searchInput = document.getElementById('search');
+        if (searchInput) {
+            searchInput.addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase();
+                const cards = document.querySelectorAll('.card');
+                
+                cards.forEach(card => {
+                    const title = card.querySelector('.title')?.textContent.toLowerCase() || '';
+                    const url = card.querySelector('.url')?.textContent.toLowerCase() || '';
+                    
+                    if (title.includes(searchTerm) || url.includes(searchTerm)) {
+                        card.style.display = '';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        // Enhanced certificate days display
+        document.addEventListener('DOMContentLoaded', function() {
+            const certInfo = document.querySelectorAll('.cert-info');
+            
+            certInfo.forEach(info => {
+                const daysLeftDiv = Array.from(info.querySelectorAll('div')).find(div => 
+                    div.querySelector('strong')?.textContent.includes('Days Left')
+                );
+                
+                if (daysLeftDiv) {
+                    const nextDiv = daysLeftDiv.nextElementSibling;
+                    if (nextDiv) {
+                        const daysText = nextDiv.textContent.trim();
+                        const daysNum = parseInt(daysText);
+                        
+                        if (!isNaN(daysNum)) {
+                            const badge = document.createElement('span');
+                            badge.className = 'days-badge';
+                            badge.textContent = `${daysNum} days`;
+                            
+                            if (daysNum <= 7) {
+                                badge.classList.add('critical');
+                            } else if (daysNum <= 30) {
+                                badge.classList.add('warning');
+                            } else {
+                                badge.classList.add('good');
+                            }
+                            
+                            nextDiv.innerHTML = '';
+                            nextDiv.appendChild(document.createTextNode(daysText));
+                            nextDiv.appendChild(badge);
+                            nextDiv.className = 'cert-value-days';
+                        }
+                    }
+                }
+            });
+        });
+
+        // Auto-refresh functionality (optional)
+        function updateTimestamp() {
+            const now = new Date();
+            const utcString = now.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+            const timestampElement = document.querySelector('.timestamp');
+            if (timestampElement) {
+                timestampElement.textContent = `Last updated: ${utcString}`;
+            }
+        }
+
+        // Card loading animation
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach((card, index) => {
+                card.style.animationDelay = `${index * 0.1}s`;
+                card.classList.add('loading');
+            });
+        });
+
+        // Enhanced status styling
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach(card => {
+                const status = card.querySelector('.status');
+                if (status) {
+                    const statusText = status.textContent.toLowerCase();
+                    if (statusText.includes('online')) {
+                        card.classList.add('online');
+                    } else if (statusText.includes('warning')) {
+                        card.classList.add('warning');
+                    } else if (statusText.includes('offline')) {
+                        card.classList.add('offline');
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

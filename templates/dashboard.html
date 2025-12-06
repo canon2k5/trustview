@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}TrustView Status Dashboard{% endblock %}
+{% block header %}🛡️ TrustView Status Dashboard{% endblock %}
+{% block timestamp %}Last updated: {{ now }}{% endblock %}
+
+{% block toggles %}
+<div class="toggles">
+  <label>
+    <input type="checkbox" id="card-view-toggle"> Card View
+  </label>
+</div>
+{% endblock %}
+
+{% block controls %}
+  <div class="controls-grid">
+    <div class="search-container">
+      <input id="search" type="text" placeholder="Search websites…">
+    </div>
+    <div class="theme-toggle" id="theme-toggle-btn">
+      <i class="fas fa-moon"></i>
+    </div>
+  </div>
+  <div class="controls-actions">
+    <a href="/export.json" class="btn">
+      <i class="fas fa-download"></i>
+      Export JSON
+    </a>
+    <a href="/export.csv" class="btn">
+      <i class="fas fa-file-csv"></i>
+      Export CSV
+    </a>
+    <a href="/export.xml" class="btn">
+      <i class="fas fa-file-code"></i>
+      Export XML
+    </a>
+    <a href="{{ url_for('admin.index') }}" class="btn btn-secondary">
+      <i class="fas fa-cog"></i>
+      Admin Panel
+    </a>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <div class="grid">
+    <div class="list-header">
+      <span class="col-name">Website</span>
+      <span class="col-status">Status</span>
+      <span class="col-expires">Expires</span>
+      <span class="col-days">Days Left</span>
+      <span class="col-issuer">Issuer</span>
+    </div>
+    {% for s in results %}
+      <div class="card {{ s.status }} card-{{ s.status }}">
+        <div class="card-header">
+          <div>
+            <div class="title">{{ s.name }}</div>
+            <a href="{{ s.url }}" class="url" target="_blank">{{ s.url }}</a>
+          </div>
+          <div class="status {{ s.status }}">
+            {% if s.status == 'healthy' %}Healthy{% endif %}
+            {% if s.status == 'expiring' %}Expiring{% endif %}
+            {% if s.status == 'critical' %}Critical{% endif %}
+            {% if s.status == 'error' %}Error{% endif %}
+          </div>
+        </div>
+        
+        <div class="cert-info">
+          <div class="cert-item expires" data-label="Expires">
+            <strong>Expires:</strong>
+            <span>{{ s.cert.expires }}</span>
+          </div>
+          <div class="cert-item days" data-label="Days Left">
+            <strong>Days Left:</strong>
+            <span>{{ s.cert.days_left }}</span>
+          </div>
+          <div class="cert-item issuer" data-label="Issuer">
+            <strong>Issuer:</strong>
+            <span>{{ s.cert.issuer }}</span>
+          </div>
+          <div class="cert-item validity" data-label="Cert Status">
+            <strong>Status:</strong>
+            <span>
+              {% if s.cert.expired is none %}
+                Unknown
+              {% elif s.cert.expired %}
+                Expired
+              {% else %}
+                Valid
+              {% endif %}
+            </span>
+          </div>
+          {% if s.cert.error %}
+          <div class="cert-item cert-error" data-label="Check Error">
+            <strong>Error:</strong>
+            <span>{{ s.cert.error }}</span>
+          </div>
+          {% endif %}
+        </div>
+
+        {% if s.error %}
+        <div class="cert-error">
+          <strong>Check Error:</strong>
+          <span>{{ s.error }}</span>
+        </div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}
