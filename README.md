@@ -1,4 +1,4 @@
-# TrustView / TrustCheck
+# TrustView
 
 TrustView is a lightweight certificate and website status dashboard. Point it at a list of sites (internal or public) and it will:
 
