@@ -1,37 +1,33 @@
 # TrustView
 
-TrustView is a lightweight certificate and website status dashboard. Point it at a list of sites (internal or public) and it will:
+TrustView is a lightweight certificate and website status dashboard. Point it at a list of sites (internal or public) and it checks HTTP reachability and TLS certificate health in parallel, surfacing expiration warnings before they become incidents.
 
-- Fetch HTTP and TLS information in parallel.
-- Highlight upcoming certificate expirations.
-- Export the full status table as JSON, CSV, or XML.
-- Support custom CA bundles and selective SSL verification so you can monitor private/internal CA servers alongside public endpoints.
-
-The app is built with Flask and stores configuration in a simple `websites.yml`, making it easy to deploy inside an ops network or bundle with existing tooling.
+Built with Flask. Configuration lives in a single `websites.yml` file — easy to deploy inside an ops network or alongside existing tooling.
 
 <p align="center">
-  <img src="images/darkmode-status.jpg" width="45%" alt="Dark mode">
-  <img src="images/lightmode-status.jpg" width="45%" alt="Light mode">
+  <img src="images/darkmode-status.jpg" width="45%" alt="Dark mode dashboard">
+  <img src="images/lightmode-status.jpg" width="45%" alt="Light mode dashboard">
 </p>
 
 <p align="center">
-  <img src="images/darkmode-status-card.jpg" width="45%" alt="Dark mode">
-  <img src="images/lightmode-admin.jpg" width="45%" alt="Light mode">
+  <img src="images/lightmode-admin.jpg" width="45%" alt="Admin panel">
 </p>
 
 ## Features
 
-- **Dashboard & cards** – clean UI with search, card/grid toggle, and live timestamp.
-- **Parallel status checks** – threaded worker pool (configurable) to keep refresh times low.
-- **Certificate intelligence** – issuer, expiration date, days left, and severity tagging.
-- **Internal CA support** – per-site CA bundle paths or automatic system bundle discovery; disable verification for lab gear when needed.
-- **Admin interface** – protect changes behind a password (default hashed on first run).
-- **Exports** – `/export.json`, `/export.csv`, `/export.xml` for downstream automation.
+- **Live status dashboard** — list view with color-coded severity, sortable by any column (name, status, expiry, days left, issuer)
+- **Search** — filter by site name, URL, or certificate issuer in real time
+- **Certificate intelligence** — issuer, expiration date, days remaining, and automatic severity tagging (healthy / expiring / critical)
+- **Daily auto-refresh** — page reloads once every 24 hours automatically
+- **Parallel checks** — threaded worker pool keeps the dashboard fast regardless of site count
+- **Internal CA support** — per-site CA bundle paths or automatic system bundle discovery; disable verification for lab gear when needed
+- **Admin panel** — add, edit, and delete sites behind a password-protected interface with its own search filter
+- **Exports** — `/export.json`, `/export.csv`, `/export.xml` for downstream automation
 
 ## Requirements
 
-- Python 3.8+ (older versions work, but Python 3.6+ is recommended).
-- System packages needed by `requirements.txt` (Flask, requests, bcrypt, PyYAML, etc.).
+- Python 3.8+
+- Dependencies: Flask, PyYAML, bcrypt, requests
 
 ## Quick Start
 
@@ -42,68 +38,84 @@ pip install -r requirements.txt
 python app.py
 ```
 
-The server defaults to `127.0.0.1:5000`. Set `HOST`/`PORT` to expose it elsewhere.
+The server defaults to `127.0.0.1:5000`. Open that address in a browser.
 
-## Configuration
+## Environment Variables
 
-Key environment variables:
-
-| Variable          | Default | Description |
-|-------------------|---------|-------------|
-| `SECRET_KEY`      | random  | Flask session secret; set for production. |
-| `FLASK_DEBUG`     | `true`  | Enables hot reload/logging. |
-| `STATUS_THREADS`  | `8`     | Size of the thread pool for status checks. |
-| `MAX_GAUGE`       | `500`   | Maximum value for dashboard gauges. |
-| `HOST`/`PORT`     | `127.0.0.1`/`5000` | Listen address. |
+| Variable         | Default       | Description                                          |
+|------------------|---------------|------------------------------------------------------|
+| `SECRET_KEY`     | random        | Flask session secret — set a fixed value in production |
+| `FLASK_DEBUG`    | `true`        | Enables hot reload and debug logging                 |
+| `STATUS_THREADS` | `8`           | Thread pool size for parallel status checks          |
+| `HOST`           | `127.0.0.1`   | Listen address                                       |
+| `PORT`           | `5000`        | Listen port                                          |
 
 ## Managing Sites
 
-Sites live in `websites.yml`. Example entry:
+Sites live in `websites.yml`. The admin panel at `/admin` lets you add, edit, and delete them without touching the file directly.
+
+For advanced options, edit `websites.yml` by hand:
 
 ```yaml
 websites:
-  - name: Internal CA
-    url: https://pki.internal.example.com
-    ca_bundle: /etc/ssl/internal-ca.pem   # optional per-site CA
-    verify_ssl: true                      # set false to disable verification
-    timeout: 10                           # seconds (optional)
-    auth:                                 # optional basic auth
+  - name: Internal App
+    url: https://app.internal.example.com
+    ca_bundle: /etc/ssl/internal-ca.pem   # optional: per-site CA bundle
+    verify_ssl: true                      # set false to skip verification
+    timeout: 10                           # request timeout in seconds
+    auth:                                 # optional HTTP basic auth
       username: monitor
       password: s3cret!
 ```
 
-- If `ca_bundle` points to a file, that bundle is used just for that site.
-- If `verify_ssl` is `false`, SSL verification is skipped (useful for lab devices).
-- Otherwise the app discovers the system CA bundle automatically, so private CA roots installed on the host are honored.
+- **`ca_bundle`** — path to a PEM file used only for this site; useful for private CA roots without touching global trust stores.
+- **`verify_ssl: false`** — skips certificate verification entirely; use only for lab devices or staged environments.
+- **No custom bundle** — the app automatically discovers the system CA bundle (Debian, RHEL, macOS, etc.) and falls back to `certifi` if none is found.
 
-Restart the app or use the admin UI to reload changes.
+## Status Severity
+
+| Status     | Meaning                              |
+|------------|--------------------------------------|
+| `healthy`  | Certificate valid, more than 30 days remaining |
+| `expiring` | Certificate expires within 30 days   |
+| `critical` | Certificate expires within 7 days or already expired |
+| `error`    | Certificate could not be retrieved   |
 
 ## Admin Access
 
-On first run, the app hashes a default admin password (`secret`) into `websites.yml`. Update it immediately by editing the YAML.
+Navigate to `/admin` and log in. On first run the default password is `secret` — change it immediately.
 
 ### Changing the Password
 
-Edit `admin.password` inside `websites.yml` and set it to a plain string (for example `admin.password: myNewSecret`). On the next start, the app detects non-hashed values and replaces them with a bcrypt hash. Remember to restart the service and keep the file secured since it briefly contains plain text.
+Set `admin.password` in `websites.yml` to a plain string:
 
-## Exporting Data
+```yaml
+admin:
+  password: myNewPassword
+```
 
-Download the current status from:
+On next startup the app detects the plain-text value, replaces it with a bcrypt hash, and saves the file. Keep `websites.yml` secured since it briefly contains plain text during this process.
+
+## Monitoring Internal CA Servers
+
+TrustView is designed to mix public and private infrastructure in a single dashboard.
+
+- **Custom bundles** — put your internal CA PEM file on disk and set `ca_bundle` for the relevant site. The certificate is verified against that bundle only, without touching the global trust store.
+- **System bundle discovery** — when no custom bundle is set, the app inspects common OS paths (Debian/Ubuntu, RHEL/CentOS, macOS, Alpine, FreeBSD) and falls back to `certifi`. If your host already trusts your internal CA, those endpoints are covered automatically.
+- **Verification toggle** — `verify_ssl: false` is available for edge cases such as lab appliances or staged certificate revocations. Use sparingly.
+
+This means a single TrustView instance can monitor both public endpoints and private infrastructure behind a corporate CA with consistent certificate telemetry across the board.
+
+## Exports
+
+The current status snapshot is available at:
 
 - `/export.json`
 - `/export.csv`
 - `/export.xml`
 
-Each export contains the site name, URL, status, issuer, expiration date, and days remaining.
-
-## Monitoring Internal CA Servers
-
-- **Custom bundles:** Put your internal CA PEM file on disk and use the `ca_bundle` key for the corresponding site. This allows monitoring endpoints signed by private roots without touching global trust stores.
-- **System detection:** When no custom bundle is supplied, `utils.get_system_ca_bundle()` inspects common paths (Debian, RHEL, macOS, etc.) and falls back to `certifi`. Deploy the app on a host that already trusts your internal CAs to automatically cover those endpoints.
-- **Verification toggle:** `verify_ssl: false` is available for edge cases (lab appliances, staged revocations). Use sparingly.
-
-With these controls, TrustView can mix public and private infrastructure in a single dashboard while keeping certificate telemetry consistent.
+Each record contains site name, URL, status, issuer, expiration date, and days remaining.
 
 ## License
 
-MIT License © canon2k5.
+MIT License © canon2k5

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}TrustView Dashboard{% endblock %}</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -13,19 +13,9 @@
         <div class="header-content">
             <h1>{% block header %}TrustView Dashboard{% endblock %}</h1>
             <h2>Certificate & Website Status Monitoring</h2>
-            <div class="timestamp">
-                {% block timestamp %}{% endblock %}
-            </div>
+            {% block timestamp %}{% endblock %}
         </div>
     </div>
-
-    {% block toggles %}
-    <div class="toggles">
-        <label>
-            <input type="checkbox" id="card-view-toggle"> Card View
-        </label>
-    </div>
-    {% endblock %}
 
     <div class="controls">
         {% block controls %}{% endblock %}
@@ -42,26 +32,13 @@
 
     <script>
         // Theme Toggle Functionality
-        const cardViewToggle = document.getElementById('card-view-toggle');
         const themeToggleBtn = document.getElementById('theme-toggle-btn');
         const body = document.body;
 
-        // Load saved preferences
-        const savedDarkMode = localStorage.getItem('darkMode') === 'true';
-        const savedCardViewPref = localStorage.getItem('cardView');
-        const legacyCompactPref = localStorage.getItem('compactMode');
-        const prefersCardView = savedCardViewPref !== null
-            ? savedCardViewPref === 'true'
-            : legacyCompactPref === 'true';
-
         // Apply saved preferences
+        const savedDarkMode = localStorage.getItem('darkMode') === 'true';
         if (savedDarkMode) {
             body.classList.add('dark-mode');
-        }
-        body.classList.remove('compact');
-        if (prefersCardView) {
-            body.classList.add('card-view');
-            if (cardViewToggle) cardViewToggle.checked = true;
         }
 
         // Update theme toggle button icon
@@ -87,15 +64,6 @@
             });
         }
 
-        // Compact mode toggle
-        if (cardViewToggle) {
-            cardViewToggle.addEventListener('change', function() {
-                body.classList.remove('compact');
-                body.classList.toggle('card-view', this.checked);
-                localStorage.setItem('cardView', this.checked);
-            });
-        }
-
         // Search functionality (only on dashboard)
         const searchInput = document.getElementById('search');
         if (searchInput) {
@@ -106,8 +74,9 @@
                 cards.forEach(card => {
                     const title = card.querySelector('.title')?.textContent.toLowerCase() || '';
                     const url = card.querySelector('.url')?.textContent.toLowerCase() || '';
-                    
-                    if (title.includes(searchTerm) || url.includes(searchTerm)) {
+                    const issuer = card.querySelector('.cert-item.issuer span')?.textContent.toLowerCase() || '';
+
+                    if (title.includes(searchTerm) || url.includes(searchTerm) || issuer.includes(searchTerm)) {
                         card.style.display = '';
                     } else {
                         card.style.display = 'none';
@@ -154,14 +123,49 @@
             });
         });
 
-        // Auto-refresh functionality (optional)
-        function updateTimestamp() {
-            const now = new Date();
-            const utcString = now.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
-            const timestampElement = document.querySelector('.timestamp');
-            if (timestampElement) {
-                timestampElement.textContent = `Last updated: ${utcString}`;
-            }
+        // Daily auto-refresh
+        setTimeout(() => location.reload(), 24 * 60 * 60 * 1000);
+
+        // Column sorting
+        const listHeader = document.querySelector('.list-header');
+        if (listHeader) {
+            let sortCol = null;
+            let sortAsc = true;
+
+            const colExtractors = {
+                'col-name':    card => card.querySelector('.title')?.textContent.trim().toLowerCase() || '',
+                'col-status':  card => ['healthy','expiring','critical','error'].indexOf(card.querySelector('.status')?.textContent.trim().toLowerCase()) ?? 9,
+                'col-expires': card => card.querySelector('.cert-item.expires span')?.textContent.trim() || '',
+                'col-days':    card => parseInt(card.querySelector('.cert-item.days span')?.textContent.trim()) || 9999,
+                'col-issuer':  card => card.querySelector('.cert-item.issuer span')?.textContent.trim().toLowerCase() || '',
+            };
+
+            listHeader.querySelectorAll('span').forEach(span => {
+                span.addEventListener('click', function () {
+                    const col = this.className.trim();
+                    const extractor = colExtractors[col];
+                    if (!extractor) return;
+
+                    sortAsc = sortCol === col ? !sortAsc : true;
+                    sortCol = col;
+
+                    listHeader.querySelectorAll('span').forEach(s => {
+                        s.textContent = s.dataset.label;
+                        s.removeAttribute('data-sorted');
+                    });
+                    this.textContent = this.dataset.label + (sortAsc ? ' ↑' : ' ↓');
+                    this.dataset.sorted = sortAsc ? 'asc' : 'desc';
+
+                    const grid = document.querySelector('.grid');
+                    const cards = Array.from(grid.querySelectorAll('.card'));
+                    cards.sort((a, b) => {
+                        const av = extractor(a), bv = extractor(b);
+                        if (typeof av === 'number' && typeof bv === 'number') return sortAsc ? av - bv : bv - av;
+                        return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+                    });
+                    cards.forEach(card => grid.appendChild(card));
+                });
+            });
         }
 
         // Card loading animation

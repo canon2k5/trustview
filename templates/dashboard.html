@@ -2,15 +2,7 @@
 
 {% block title %}TrustView Status Dashboard{% endblock %}
 {% block header %}🛡️ TrustView Status Dashboard{% endblock %}
-{% block timestamp %}Last updated: {{ now }}{% endblock %}
-
-{% block toggles %}
-<div class="toggles">
-  <label>
-    <input type="checkbox" id="card-view-toggle"> Card View
-  </label>
-</div>
-{% endblock %}
+{% block timestamp %}<div class="timestamp">Last updated: {{ now }}</div>{% endblock %}
 
 {% block controls %}
   <div class="controls-grid">
@@ -44,11 +36,11 @@
 {% block content %}
   <div class="grid">
     <div class="list-header">
-      <span class="col-name">Website</span>
-      <span class="col-status">Status</span>
-      <span class="col-expires">Expires</span>
-      <span class="col-days">Days Left</span>
-      <span class="col-issuer">Issuer</span>
+      <span class="col-name" data-label="Website">Website</span>
+      <span class="col-status" data-label="Status">Status</span>
+      <span class="col-expires" data-label="Expires">Expires</span>
+      <span class="col-days" data-label="Days Left">Days Left</span>
+      <span class="col-issuer" data-label="Issuer">Issuer</span>
     </div>
     {% for s in results %}
       <div class="card {{ s.status }} card-{{ s.status }}">

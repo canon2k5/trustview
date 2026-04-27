@@ -3,10 +3,6 @@
 {% block title %}Admin Panel - TrustView{% endblock %}
 {% block header %}🛡️ Admin Panel{% endblock %}
 
-{% block toggles %}
-<!-- No toggles needed for admin panel -->
-{% endblock %}
-
 {% block controls %}
   <div class="controls-grid">
     <div class="admin-nav">
@@ -72,32 +68,35 @@
           <span class="count-badge">{{ current|length }}</span>
         </h2>
         <p>Manage your monitored websites</p>
+        <input type="text" id="admin-search" placeholder="Filter by name or URL…" style="margin-top:1rem;width:100%;padding:0.75rem 1rem;border:2px solid var(--border-color);border-radius:0.75rem;background:var(--bg-secondary);color:var(--text-primary);font-size:1rem;">
       </div>
 
       {% if current %}
         <div class="websites-list">
           {% for site in current %}
             <div class="website-item">
-              <div class="website-info">
-                <div class="website-name">
-                  <i class="fas fa-globe"></i>
-                  {{ site.name }}
+              <div class="website-header">
+                <div class="website-info">
+                  <div class="website-name">
+                    <i class="fas fa-globe"></i>
+                    {{ site.name }}
+                  </div>
+                  <div class="website-url">
+                    <i class="fas fa-link"></i>
+                    {{ site.url }}
+                  </div>
                 </div>
-                <div class="website-url">
-                  <i class="fas fa-link"></i>
-                  {{ site.url }}
+
+                <div class="website-actions">
+                  <button class="btn btn-edit" onclick="editWebsite({{ loop.index0 }})">
+                    <i class="fas fa-edit"></i>
+                    Edit
+                  </button>
+                  <button class="btn btn-delete" onclick="deleteWebsite({{ loop.index0 }}, '{{ site.name }}')">
+                    <i class="fas fa-trash"></i>
+                    Delete
+                  </button>
                 </div>
-              </div>
-              
-              <div class="website-actions">
-                <button class="btn btn-edit" onclick="editWebsite({{ loop.index0 }})">
-                  <i class="fas fa-edit"></i>
-                  Edit
-                </button>
-                <button class="btn btn-delete" onclick="deleteWebsite({{ loop.index0 }}, '{{ site.name }}')">
-                  <i class="fas fa-trash"></i>
-                  Delete
-                </button>
               </div>
 
               <!-- Hidden Edit Form -->
@@ -262,7 +261,7 @@
       transform: translateY(-1px);
     }
 
-    .website-item > div:first-child {
+    .website-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -400,19 +399,19 @@
     function editWebsite(index) {
       const editForm = document.getElementById(`edit-form-${index}`);
       const websiteItem = editForm.parentElement;
-      const websiteInfo = websiteItem.querySelector('.website-info').parentElement;
-      
-      websiteInfo.style.display = 'none';
+      const websiteHeader = websiteItem.querySelector('.website-header');
+
+      websiteHeader.style.display = 'none';
       editForm.style.display = 'block';
     }
 
     function cancelEdit(index) {
       const editForm = document.getElementById(`edit-form-${index}`);
       const websiteItem = editForm.parentElement;
-      const websiteInfo = websiteItem.querySelector('.website-info').parentElement;
-      
+      const websiteHeader = websiteItem.querySelector('.website-header');
+
       editForm.style.display = 'none';
-      websiteInfo.style.display = 'flex';
+      websiteHeader.style.display = 'flex';
     }
 
     function deleteWebsite(index, name) {
@@ -421,6 +420,16 @@
         document.getElementById('delete-form').submit();
       }
     }
+
+    // Admin search filter
+    document.getElementById('admin-search').addEventListener('input', function() {
+      const term = this.value.toLowerCase();
+      document.querySelectorAll('.website-item').forEach(item => {
+        const name = item.querySelector('.website-name')?.textContent.toLowerCase() || '';
+        const url  = item.querySelector('.website-url')?.textContent.toLowerCase() || '';
+        item.style.display = (name.includes(term) || url.includes(term)) ? '' : 'none';
+      });
+    });
 
     // Form validation and UX improvements
     document.addEventListener('DOMContentLoaded', function() {
